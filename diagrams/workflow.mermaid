@@ -1,0 +1,37 @@
+flowchart TD
+    A([Candidate Submits Assessment Form]) --> B
+
+    subgraph FORM["Form Platform (Typeform / JotForm)"]
+        B[Form submission captured]
+    end
+
+    B --> C
+
+    subgraph MAKE["Make.com Automation Scenario"]
+        C[Webhook Module - Receives POST payload] --> D
+        D[JSON Parser - Extract candidate info + question responses] --> E
+        E[HTTP Module - POST to Claude API /v1/messages] --> F
+        F{Claude API Response OK?}
+        F -- "Yes - JSON score object" --> G
+        F -- "No / Empty - ifempty fallback" --> H
+        G[JSON Parse Module - Extract domain scores + pass/fail verdict] --> I
+        H[Flag for Manual Review] --> I
+        I[Airtable Module - Create/Update candidate record] --> J
+        J[Gmail Module - Send summary email to coordinator]
+    end
+
+    subgraph AIRTABLE["Airtable - Candidate Tracking Base"]
+        K[(Candidates Table - Name, Email, Scores, Verdict, Submission Date)]
+    end
+
+    subgraph GMAIL["Gmail"]
+        L[Coordinator Notification Email]
+    end
+
+    I --> K
+    J --> L
+
+    L --> M([Coordinator Reviews Airtable Record])
+    M --> N{Pass / Fail?}
+    N -- Pass --> O([Advance to Interview])
+    N -- Fail --> P([Send Decline / Retry Notice])
